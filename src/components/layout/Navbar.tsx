@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu, X, Home, Phone, Info, Tool, User } from "lucide-react";
+import { ShoppingCart, Menu, X, Home, Phone, Info, Wrench, User } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,7 @@ const Navbar = () => {
 
   const navLinks = [
     { title: "Главная", path: "/", icon: <Home className="mr-2 h-4 w-4" /> },
-    { title: "Каталог", path: "/catalog", icon: <Tool className="mr-2 h-4 w-4" /> },
+    { title: "Каталог", path: "/catalog", icon: <Wrench className="mr-2 h-4 w-4" /> },
     { title: "О нас", path: "/about", icon: <Info className="mr-2 h-4 w-4" /> },
     { title: "Контакты", path: "/contacts", icon: <Phone className="mr-2 h-4 w-4" /> },
   ];
