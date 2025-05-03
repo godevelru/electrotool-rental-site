@@ -16,11 +16,11 @@ import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Auth from "./pages/Auth";
 import Catalog from "./pages/Catalog";
+import Dashboard from "./pages/admin/Dashboard";
 
 // Заглушки для страниц, которые будут созданы позже
 const AccountPage = () => <div className="p-8 text-center">Личный кабинет пользователя (в разработке)</div>;
 const BookingPage = () => <div className="p-8 text-center">Страница бронирования (в разработке)</div>;
-const AdminDashboard = () => <div className="p-8 text-center">Панель администратора (в разработке)</div>;
 
 const queryClient = new QueryClient();
 
@@ -78,17 +78,10 @@ const App = () => (
             path="/admin" 
             element={
               <ProtectedRoute requireAdmin={true}>
-                <AdminDashboard />
+                <Dashboard />
               </ProtectedRoute>
             } 
           />
-          
-          {/* Редиректы для удобства */}
-          <Route path="/admin/*" element={
-            <ProtectedRoute requireAdmin={true}>
-              <Navigate to="/admin" replace />
-            </ProtectedRoute>
-          } />
           
           {/* Страница 404 */}
           <Route path="*" element={<NotFound />} />
