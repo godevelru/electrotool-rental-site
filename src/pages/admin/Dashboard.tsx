@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import UserManagement from "./UserManagement";
 import { 
   LayoutDashboard, 
   Users, 
@@ -264,19 +265,12 @@ const Dashboard = () => {
               </Card>
             </TabsContent>
 
-            {/* Заглушки для остальных вкладок */}
-            <TabsContent value="users" className="h-[400px] rounded-md border p-6">
-              <div className="flex h-full flex-col items-center justify-center">
-                <Users className="h-10 w-10 text-gray-400" />
-                <h3 className="mt-4 text-lg font-medium">Управление пользователями</h3>
-                <p className="mt-2 text-center text-sm text-gray-500">
-                  Здесь будет список пользователей с возможностью управления ими.
-                  <br />
-                  Этот раздел находится в разработке.
-                </p>
-              </div>
+            {/* Вкладка управления пользователями */}
+            <TabsContent value="users">
+              <UserManagement />
             </TabsContent>
 
+            {/* Заглушки для остальных вкладок */}
             <TabsContent value="tools" className="h-[400px] rounded-md border p-6">
               <div className="flex h-full flex-col items-center justify-center">
                 <Package className="h-10 w-10 text-gray-400" />
