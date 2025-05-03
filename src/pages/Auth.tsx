@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -9,9 +9,23 @@ import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Container from "@/components/ui/container";
+import { useAuth } from "@/context/AuthContext";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, register, isAuthenticated, isLoading: authLoading } = useAuth();
+  
+  // Получаем целевую страницу из параметров URL
+  const from = new URLSearchParams(location.search).get("from") || "/account";
+
+  // Если пользователь уже аутентифицирован, перенаправляем на целевую страницу
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
+
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,16 +73,14 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Эмуляция задержки API запроса
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // В реальном приложении здесь был бы запрос к API для аутентификации
-      console.log("Login with:", loginForm);
-      
-      // Успешный вход
-      navigate("/account");
+      const success = await login(loginForm.email, loginForm.password);
+      if (success) {
+        navigate(from, { replace: true });
+      } else {
+        setError("Неверный email или пароль");
+      }
     } catch (err) {
-      setError("Неверный email или пароль");
+      setError("Ошибка авторизации. Пожалуйста, попробуйте позже.");
     } finally {
       setIsLoading(false);
     }
@@ -88,35 +100,49 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Эмуляция задержки API запроса
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { confirmPassword, agreeTerms, ...userData } = registerForm;
+      const success = await register(userData);
       
-      // В реальном приложении здесь был бы запрос к API для регистрации
-      console.log("Register with:", registerForm);
-      
-      // Успешная регистрация, переход к входу
-      setActiveTab("login");
-      setLoginForm({
-        ...loginForm,
-        email: registerForm.email,
-      });
-      
-      // Сброс формы регистрации
-      setRegisterForm({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        password: "",
-        confirmPassword: "",
-        agreeTerms: false,
-      });
+      if (success) {
+        // Успешная регистрация, переход к входу
+        setActiveTab("login");
+        setLoginForm({
+          ...loginForm,
+          email: registerForm.email,
+        });
+        
+        // Сброс формы регистрации
+        setRegisterForm({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          password: "",
+          confirmPassword: "",
+          agreeTerms: false,
+        });
+      }
     } catch (err) {
       setError("Ошибка при регистрации. Пожалуйста, попробуйте позже.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Проверка авторизации...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
