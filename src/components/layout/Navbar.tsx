@@ -1,109 +1,141 @@
 
 import { Link } from "react-router-dom";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Menu, X, Home, Phone, Info, Wrench, User } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Home,
+  InfoIcon,
+  Phone,
+  ShoppingCart,
+  Menu,
+  User,
+  LogOut,
+  Settings,
+  Package,
+  CalendarClock,
+  ShieldCheck,
+} from "lucide-react";
 
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
-  const navLinks = [
-    { title: "Главная", path: "/", icon: <Home className="mr-2 h-4 w-4" /> },
-    { title: "Каталог", path: "/catalog", icon: <Wrench className="mr-2 h-4 w-4" /> },
-    { title: "О нас", path: "/about", icon: <Info className="mr-2 h-4 w-4" /> },
-    { title: "Контакты", path: "/contacts", icon: <Phone className="mr-2 h-4 w-4" /> },
-  ];
+  // Получаем инициалы пользователя для аватара
+  const getUserInitials = () => {
+    if (!user) return "ГП";
+    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+  };
 
   return (
-    <nav className="bg-primary text-white sticky top-0 z-50 shadow-md">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold flex items-center">
-              ИнструментПрокат
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className="hover:text-primary-foreground/80 flex items-center transition-colors"
-              >
-                {link.icon}
-                {link.title}
-              </Link>
-            ))}
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <Link to="/cart">
-              <Button variant="ghost" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-white text-primary text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">0</span>
+    <header className="border-b bg-white">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex items-center">
+          <Link to="/" className="flex items-center text-xl font-bold text-primary">
+            🛠️ ИнструментПрокат
+          </Link>
+          
+          <nav className="ml-8 hidden md:flex space-x-1">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <Home className="h-4 w-4" />
+                Главная
               </Button>
             </Link>
-            <Link to="/login">
-              <Button variant="outline" className="hidden md:flex bg-white text-primary hover:bg-white/90">
-                <User className="mr-2 h-4 w-4" />
-                Войти
+            <Link to="/catalog">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <Package className="h-4 w-4" />
+                Каталог
               </Button>
             </Link>
+            <Link to="/about">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <InfoIcon className="h-4 w-4" />
+                О нас
+              </Button>
+            </Link>
+            <Link to="/contacts">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <Phone className="h-4 w-4" />
+                Контакты
+              </Button>
+            </Link>
+          </nav>
+        </div>
 
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
+        <div className="flex items-center space-x-4">
+          <Link to="/cart" className="relative">
+            <Button variant="ghost" size="icon" className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-white">
+                0
+              </span>
+            </Button>
+          </Link>
+
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="flex gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={user?.avatar ? user.avatar : undefined}
+                      alt={`${user?.firstName} ${user?.lastName}`}
+                    />
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                  </Avatar>
+                  <span className="hidden md:inline">{user?.firstName}</span>
                 </Button>
-              </SheetTrigger>
-              <SheetContent className="w-[250px] p-0">
-                <div className="flex flex-col h-full bg-primary text-white">
-                  <div className="p-4 border-b border-white/10">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xl font-bold">Меню</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col p-4 space-y-4">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.path}
-                        to={link.path}
-                        className="flex items-center p-2 hover:bg-primary-foreground/20 rounded transition-colors"
-                      >
-                        {link.icon}
-                        {link.title}
-                      </Link>
-                    ))}
-                    <Link
-                      to="/login"
-                      className="flex items-center p-2 hover:bg-primary-foreground/20 rounded transition-colors"
-                    >
-                      <User className="mr-2 h-4 w-4" />
-                      Войти
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <Link to="/account">
+                  <DropdownMenuItem>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Мой профиль</span>
+                  </DropdownMenuItem>
+                </Link>
+                <Link to="/booking">
+                  <DropdownMenuItem>
+                    <CalendarClock className="mr-2 h-4 w-4" />
+                    <span>Мои бронирования</span>
+                  </DropdownMenuItem>
+                </Link>
+                {user?.role === "admin" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <Link to="/admin">
+                      <DropdownMenuItem>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Админ-панель</span>
+                      </DropdownMenuItem>
                     </Link>
-                    <Link
-                      to="/cart"
-                      className="flex items-center p-2 hover:bg-primary-foreground/20 rounded transition-colors"
-                    >
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Корзина
-                    </Link>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Выйти</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button size="sm">Войти</Button>
+            </Link>
+          )}
+
+          <Button variant="ghost" size="icon" className="md:hidden">
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 
