@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { adminApi } from "@/lib/api";
 import UserManagement from "./UserManagement";
+import RevenueChart, { RevenueData } from "@/components/admin/RevenueChart";
+import BookingsChart, { BookingData } from "@/components/admin/BookingsChart";
 import { 
   LayoutDashboard, 
   Users, 
@@ -20,7 +22,8 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Download
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -43,6 +46,16 @@ const Dashboard = () => {
       lastMonth: 0
     }
   });
+
+  // Состояния для периодов графиков
+  const [revenuePeriod, setRevenuePeriod] = useState<string>("month");
+  const [bookingsPeriod, setBookingsPeriod] = useState<string>("month");
+  
+  // Состояния для данных графиков
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [bookingsData, setBookingsData] = useState<BookingData[]>([]);
+  const [revenueLoading, setRevenueLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
 
   // Загрузка данных дашборда
   useEffect(() => {
@@ -68,6 +81,54 @@ const Dashboard = () => {
     }
   }, [activeTab, toast]);
 
+  // Загрузка данных выручки при изменении периода
+  useEffect(() => {
+    const fetchRevenueData = async () => {
+      setRevenueLoading(true);
+      try {
+        const response = await adminApi.dashboard.getRevenueStats(revenuePeriod as any);
+        setRevenueData(response.data || []);
+      } catch (error) {
+        console.error("Ошибка при загрузке данных выручки:", error);
+        toast({
+          title: "Ошибка загрузки данных",
+          description: "Не удалось загрузить статистику выручки. Пожалуйста, попробуйте позже.",
+          variant: "destructive"
+        });
+      } finally {
+        setRevenueLoading(false);
+      }
+    };
+
+    if (activeTab === "overview") {
+      fetchRevenueData();
+    }
+  }, [revenuePeriod, activeTab, toast]);
+
+  // Загрузка данных бронирований при изменении периода
+  useEffect(() => {
+    const fetchBookingsData = async () => {
+      setBookingsLoading(true);
+      try {
+        const response = await adminApi.dashboard.getBookingStats(bookingsPeriod as any);
+        setBookingsData(response.data || []);
+      } catch (error) {
+        console.error("Ошибка при загрузке данных бронирований:", error);
+        toast({
+          title: "Ошибка загрузки данных",
+          description: "Не удалось загрузить статистику бронирований. Пожалуйста, попробуйте позже.",
+          variant: "destructive"
+        });
+      } finally {
+        setBookingsLoading(false);
+      }
+    };
+
+    if (activeTab === "overview") {
+      fetchBookingsData();
+    }
+  }, [bookingsPeriod, activeTab, toast]);
+
   // Форматирование суммы в рубли
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -84,6 +145,44 @@ const Dashboard = () => {
   };
 
   const revenueChange = calculateChange(statsData.revenue.thisMonth, statsData.revenue.lastMonth);
+
+  // Экспорт полного отчета
+  const exportFullReport = () => {
+    try {
+      // Формирование данных отчета
+      const reportData = {
+        generatedAt: new Date().toISOString(),
+        summaryData: statsData,
+        revenueData: revenueData,
+        bookingsData: bookingsData
+      };
+      
+      // Преобразование данных в JSON-строку
+      const jsonString = JSON.stringify(reportData, null, 2);
+      
+      // Создание и скачивание файла
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `dashboard_report_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Отчет сформирован",
+        description: "Полный отчет успешно сформирован и загружен"
+      });
+    } catch (error) {
+      console.error("Ошибка при экспорте отчета:", error);
+      toast({
+        title: "Ошибка экспорта",
+        description: "Не удалось сформировать отчет. Пожалуйста, попробуйте позже.",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -157,6 +256,17 @@ const Dashboard = () => {
             {activeTab === "settings" && "Настройки"}
           </h2>
           <div className="flex items-center gap-4">
+            {activeTab === "overview" && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={exportFullReport}
+                className="mr-2"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Экспорт отчета
+              </Button>
+            )}
             <span className="text-sm text-muted-foreground">
               {user?.firstName} {user?.lastName}
             </span>
@@ -244,12 +354,33 @@ const Dashboard = () => {
                     </Card>
                   </div>
 
+                  {/* График выручки */}
+                  <RevenueChart
+                    data={revenueData}
+                    title="Динамика выручки"
+                    description="Изменение выручки за выбранный период"
+                    period={revenuePeriod}
+                    onPeriodChange={setRevenuePeriod}
+                    loading={revenueLoading}
+                    currencySymbol="₽"
+                  />
+
+                  {/* График бронирований */}
+                  <BookingsChart
+                    data={bookingsData}
+                    title="Статистика бронирований"
+                    description="Распределение бронирований по статусам за выбранный период"
+                    period={bookingsPeriod}
+                    onPeriodChange={setBookingsPeriod}
+                    loading={bookingsLoading}
+                  />
+
                   {/* Статистика по бронированиям */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Статистика бронирований</CardTitle>
+                      <CardTitle>Сводка по бронированиям</CardTitle>
                       <CardDescription>
-                        Распределение бронирований по статусам за последний месяц
+                        Текущее состояние бронирований в системе
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -274,25 +405,6 @@ const Dashboard = () => {
                             <span className="text-sm font-medium">Отменено</span>
                           </div>
                           <div className="ml-auto font-medium">{statsData.canceledBookings}</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Заглушка для графика или дополнительной статистики */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Выручка за последние 6 месяцев</CardTitle>
-                      <CardDescription>
-                        Тенденция изменения выручки
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-80 w-full">
-                      <div className="flex h-full w-full items-center justify-center rounded-md border border-dashed p-8">
-                        <div className="text-center">
-                          <p className="text-sm text-gray-500">
-                            Здесь будет график выручки (компонент в разработке)
-                          </p>
                         </div>
                       </div>
                     </CardContent>

@@ -171,7 +171,7 @@ export const bookingsApi = {
   }
 };
 
-// Новый API для административных функций
+// API для административных функций
 export const adminApi = {
   // Управление пользователями
   users: {
@@ -270,7 +270,7 @@ export const adminApi = {
     }
   },
 
-  // Управление инструментами (заготовка для будущей реализации)
+  // Управление инструментами
   tools: {
     getTools: async (params?: {
       page?: number;
@@ -292,7 +292,7 @@ export const adminApi = {
     // Остальные методы для инструментов будут добавлены позже
   },
 
-  // Управление бронированиями (заготовка для будущей реализации)
+  // Управление бронированиями
   bookings: {
     getBookings: async (params?: {
       page?: number;
@@ -328,7 +328,7 @@ export const adminApi = {
       }
     },
 
-    getRevenueStats: async (period: 'day' | 'week' | 'month' | 'year' = 'month') => {
+    getRevenueStats: async (period: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month') => {
       try {
         const response = await api.get('/admin/dashboard/revenue', { params: { period } });
         return response.data;
@@ -338,12 +338,33 @@ export const adminApi = {
       }
     },
 
-    getBookingStats: async (period: 'day' | 'week' | 'month' | 'year' = 'month') => {
+    getBookingStats: async (period: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month') => {
       try {
         const response = await api.get('/admin/dashboard/bookings', { params: { period } });
         return response.data;
       } catch (error) {
         console.error('Error fetching booking stats:', error);
+        throw error;
+      }
+    },
+    
+    // Новый метод для экспорта отчетов
+    exportReport: async (params: {
+      type: 'revenue' | 'bookings' | 'users' | 'tools' | 'full';
+      period?: 'day' | 'week' | 'month' | 'quarter' | 'year';
+      format?: 'csv' | 'excel' | 'pdf' | 'json';
+      startDate?: string;
+      endDate?: string;
+    }) => {
+      try {
+        const response = await api.get('/admin/dashboard/export', { 
+          params,
+          responseType: 'blob' // Для скачивания файлов
+        });
+        
+        return response.data;
+      } catch (error) {
+        console.error('Error exporting report:', error);
         throw error;
       }
     }
