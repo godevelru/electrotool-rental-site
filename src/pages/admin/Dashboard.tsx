@@ -1,9 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
+import { adminApi } from "@/lib/api";
 import UserManagement from "./UserManagement";
 import { 
   LayoutDashboard, 
@@ -17,29 +19,54 @@ import {
   ArrowDownRight,
   CheckCircle,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
-
-// Временные моковые данные для демонстрации
-const statsData = {
-  totalUsers: 124,
-  activeUsers: 98,
-  totalTools: 67,
-  availableTools: 42,
-  totalBookings: 213,
-  pendingBookings: 18,
-  completedBookings: 186,
-  canceledBookings: 9,
-  revenue: {
-    total: 187500,
-    thisMonth: 24600,
-    lastMonth: 22800
-  }
-};
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+  const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalTools: 0,
+    availableTools: 0,
+    totalBookings: 0,
+    pendingBookings: 0,
+    completedBookings: 0,
+    canceledBookings: 0,
+    revenue: {
+      total: 0,
+      thisMonth: 0,
+      lastMonth: 0
+    }
+  });
+
+  // Загрузка данных дашборда
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        const summary = await adminApi.dashboard.getSummary();
+        setStatsData(summary.data || {});
+      } catch (error) {
+        console.error("Ошибка при загрузке данных дашборда:", error);
+        toast({
+          title: "Ошибка загрузки данных",
+          description: "Не удалось загрузить статистику. Пожалуйста, попробуйте позже.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeTab === "overview") {
+      fetchDashboardData();
+    }
+  }, [activeTab, toast]);
 
   // Форматирование суммы в рубли
   const formatCurrency = (amount: number) => {
@@ -141,128 +168,137 @@ const Dashboard = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             {/* Вкладка общего обзора */}
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {/* Карточка с выручкой */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Выручка за месяц</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(statsData.revenue.thisMonth)}</div>
-                    <div className="flex items-center pt-1 text-xs text-muted-foreground">
-                      {revenueChange >= 0 ? (
-                        <>
-                          <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
-                          <span className="text-green-500">+{revenueChange.toFixed(1)}%</span>
-                        </>
-                      ) : (
-                        <>
-                          <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
-                          <span className="text-red-500">{revenueChange.toFixed(1)}%</span>
-                        </>
-                      )}
-                      <span className="ml-1">по сравнению с прошлым месяцем</span>
-                    </div>
-                  </CardContent>
-                </Card>
+              {loading ? (
+                <div className="flex h-[400px] w-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Загрузка статистики...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {/* Карточка с выручкой */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Выручка за месяц</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-gray-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(statsData.revenue.thisMonth)}</div>
+                        <div className="flex items-center pt-1 text-xs text-muted-foreground">
+                          {revenueChange >= 0 ? (
+                            <>
+                              <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
+                              <span className="text-green-500">+{revenueChange.toFixed(1)}%</span>
+                            </>
+                          ) : (
+                            <>
+                              <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
+                              <span className="text-red-500">{revenueChange.toFixed(1)}%</span>
+                            </>
+                          )}
+                          <span className="ml-1">по сравнению с прошлым месяцем</span>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                {/* Карточка с пользователями */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Всего пользователей</CardTitle>
-                    <Users className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{statsData.totalUsers}</div>
-                    <div className="pt-1 text-xs text-muted-foreground">
-                      <span className="font-medium text-green-500">{statsData.activeUsers}</span> активных пользователей
-                    </div>
-                  </CardContent>
-                </Card>
+                    {/* Карточка с пользователями */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Всего пользователей</CardTitle>
+                        <Users className="h-4 w-4 text-gray-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{statsData.totalUsers}</div>
+                        <div className="pt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-green-500">{statsData.activeUsers}</span> активных пользователей
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                {/* Карточка с инструментами */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Всего инструментов</CardTitle>
-                    <Package className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{statsData.totalTools}</div>
-                    <div className="pt-1 text-xs text-muted-foreground">
-                      <span className="font-medium text-green-500">{statsData.availableTools}</span> доступно для аренды
-                    </div>
-                  </CardContent>
-                </Card>
+                    {/* Карточка с инструментами */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Всего инструментов</CardTitle>
+                        <Package className="h-4 w-4 text-gray-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{statsData.totalTools}</div>
+                        <div className="pt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-green-500">{statsData.availableTools}</span> доступно для аренды
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                {/* Карточка с бронированиями */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Всего бронирований</CardTitle>
-                    <CalendarClock className="h-4 w-4 text-gray-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{statsData.totalBookings}</div>
-                    <div className="pt-1 text-xs text-muted-foreground">
-                      <span className="font-medium text-amber-500">{statsData.pendingBookings}</span> ожидают подтверждения
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Статистика по бронированиям */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Статистика бронирований</CardTitle>
-                  <CardDescription>
-                    Распределение бронирований по статусам за последний месяц
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center">
-                      <div className="flex items-center">
-                        <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                        <span className="text-sm font-medium">Завершено</span>
-                      </div>
-                      <div className="ml-auto font-medium">{statsData.completedBookings}</div>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="flex items-center">
-                        <Clock className="mr-2 h-4 w-4 text-amber-500" />
-                        <span className="text-sm font-medium">Ожидает</span>
-                      </div>
-                      <div className="ml-auto font-medium">{statsData.pendingBookings}</div>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="flex items-center">
-                        <AlertTriangle className="mr-2 h-4 w-4 text-red-500" />
-                        <span className="text-sm font-medium">Отменено</span>
-                      </div>
-                      <div className="ml-auto font-medium">{statsData.canceledBookings}</div>
-                    </div>
+                    {/* Карточка с бронированиями */}
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Всего бронирований</CardTitle>
+                        <CalendarClock className="h-4 w-4 text-gray-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{statsData.totalBookings}</div>
+                        <div className="pt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-amber-500">{statsData.pendingBookings}</span> ожидают подтверждения
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
 
-              {/* Заглушка для графика или дополнительной статистики */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Выручка за последние 6 месяцев</CardTitle>
-                  <CardDescription>
-                    Тенденция изменения выручки
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="h-80 w-full">
-                  <div className="flex h-full w-full items-center justify-center rounded-md border border-dashed p-8">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500">
-                        Здесь будет график выручки (компонент в разработке)
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  {/* Статистика по бронированиям */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Статистика бронирований</CardTitle>
+                      <CardDescription>
+                        Распределение бронирований по статусам за последний месяц
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center">
+                          <div className="flex items-center">
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                            <span className="text-sm font-medium">Завершено</span>
+                          </div>
+                          <div className="ml-auto font-medium">{statsData.completedBookings}</div>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4 text-amber-500" />
+                            <span className="text-sm font-medium">Ожидает</span>
+                          </div>
+                          <div className="ml-auto font-medium">{statsData.pendingBookings}</div>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="flex items-center">
+                            <AlertTriangle className="mr-2 h-4 w-4 text-red-500" />
+                            <span className="text-sm font-medium">Отменено</span>
+                          </div>
+                          <div className="ml-auto font-medium">{statsData.canceledBookings}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Заглушка для графика или дополнительной статистики */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Выручка за последние 6 месяцев</CardTitle>
+                      <CardDescription>
+                        Тенденция изменения выручки
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-80 w-full">
+                      <div className="flex h-full w-full items-center justify-center rounded-md border border-dashed p-8">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">
+                            Здесь будет график выручки (компонент в разработке)
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
 
             {/* Вкладка управления пользователями */}
