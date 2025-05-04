@@ -9,6 +9,7 @@ import { adminApi } from "@/lib/api";
 import UserManagement from "./UserManagement";
 import RevenueChart, { RevenueData } from "@/components/admin/RevenueChart";
 import BookingsChart, { BookingData } from "@/components/admin/BookingsChart";
+import { DateRange } from "react-day-picker";
 import { 
   LayoutDashboard, 
   Users, 
@@ -53,9 +54,14 @@ const Dashboard = () => {
   
   // Состояния для данных графиков
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [previousRevenueData, setPreviousRevenueData] = useState<RevenueData[]>([]);
   const [bookingsData, setBookingsData] = useState<BookingData[]>([]);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  
+  // Состояния для сравнения и выбора диапазона
+  const [isComparingRevenue, setIsComparingRevenue] = useState(false);
+  const [revenueDateRange, setRevenueDateRange] = useState<DateRange | undefined>();
 
   // Загрузка данных дашборда
   useEffect(() => {
@@ -81,13 +87,52 @@ const Dashboard = () => {
     }
   }, [activeTab, toast]);
 
-  // Загрузка данных выручки при изменении периода
+  // Загрузка данных выручки при изменении периода или диапазона дат
   useEffect(() => {
     const fetchRevenueData = async () => {
       setRevenueLoading(true);
       try {
-        const response = await adminApi.dashboard.getRevenueStats(revenuePeriod as any);
+        // Параметры для запроса текущих данных
+        const params: any = { period: revenuePeriod };
+        
+        // Если указан произвольный диапазон дат
+        if (revenueDateRange?.from) {
+          params.startDate = revenueDateRange.from.toISOString();
+        }
+        if (revenueDateRange?.to) {
+          params.endDate = revenueDateRange.to.toISOString();
+        }
+        
+        // Запрос текущих данных
+        const response = await adminApi.dashboard.getRevenueStats(params);
         setRevenueData(response.data || []);
+        
+        // Если включено сравнение, запрашиваем данные за предыдущий период
+        if (isComparingRevenue) {
+          // Расчет параметров для предыдущего периода
+          const prevParams = { ...params };
+          
+          // Логика определения предыдущего периода в зависимости от текущего
+          if (revenueDateRange?.from && revenueDateRange?.to) {
+            // Для произвольного диапазона: смещаем на такой же интервал назад
+            const rangeInDays = Math.ceil((revenueDateRange.to.getTime() - revenueDateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+            const prevEndDate = new Date(revenueDateRange.from);
+            prevEndDate.setDate(prevEndDate.getDate() - 1);
+            
+            const prevStartDate = new Date(prevEndDate);
+            prevStartDate.setDate(prevStartDate.getDate() - rangeInDays);
+            
+            prevParams.startDate = prevStartDate.toISOString();
+            prevParams.endDate = prevEndDate.toISOString();
+          } else {
+            // Для стандартных периодов: предыдущий аналогичный период
+            prevParams.previousPeriod = true;
+          }
+          
+          // Запрос данных за предыдущий период
+          const prevResponse = await adminApi.dashboard.getRevenueStats(prevParams);
+          setPreviousRevenueData(prevResponse.data || []);
+        }
       } catch (error) {
         console.error("Ошибка при загрузке данных выручки:", error);
         toast({
@@ -103,7 +148,7 @@ const Dashboard = () => {
     if (activeTab === "overview") {
       fetchRevenueData();
     }
-  }, [revenuePeriod, activeTab, toast]);
+  }, [revenuePeriod, revenueDateRange, isComparingRevenue, activeTab, toast]);
 
   // Загрузка данных бронирований при изменении периода
   useEffect(() => {
@@ -146,6 +191,16 @@ const Dashboard = () => {
 
   const revenueChange = calculateChange(statsData.revenue.thisMonth, statsData.revenue.lastMonth);
 
+  // Обработчик изменения диапазона дат
+  const handleRevenueDateRangeChange = (range: DateRange | undefined) => {
+    setRevenueDateRange(range);
+  };
+
+  // Обработчик включения/выключения сравнения
+  const handleCompareToggle = (compare: boolean) => {
+    setIsComparingRevenue(compare);
+  };
+
   // Экспорт полного отчета
   const exportFullReport = () => {
     try {
@@ -154,6 +209,7 @@ const Dashboard = () => {
         generatedAt: new Date().toISOString(),
         summaryData: statsData,
         revenueData: revenueData,
+        previousRevenueData: previousRevenueData,
         bookingsData: bookingsData
       };
       
@@ -363,6 +419,10 @@ const Dashboard = () => {
                     onPeriodChange={setRevenuePeriod}
                     loading={revenueLoading}
                     currencySymbol="₽"
+                    onDateRangeChange={handleRevenueDateRangeChange}
+                    onCompareChange={handleCompareToggle}
+                    previousPeriodData={previousRevenueData}
+                    isComparing={isComparingRevenue}
                   />
 
                   {/* График бронирований */}
@@ -413,12 +473,11 @@ const Dashboard = () => {
               )}
             </TabsContent>
 
-            {/* Вкладка управления пользователями */}
+            {/* Остальные вкладки остаются без изменений */}
             <TabsContent value="users">
               <UserManagement />
             </TabsContent>
 
-            {/* Заглушки для остальных вкладок */}
             <TabsContent value="tools" className="h-[400px] rounded-md border p-6">
               <div className="flex h-full flex-col items-center justify-center">
                 <Package className="h-10 w-10 text-gray-400" />
