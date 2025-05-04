@@ -328,9 +328,9 @@ export const adminApi = {
       }
     },
 
-    getRevenueStats: async (period: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month') => {
+    getRevenueStats: async (params) => {
       try {
-        const response = await api.get('/admin/dashboard/revenue', { params: { period } });
+        const response = await api.get('/admin/dashboard/revenue', { params });
         return response.data;
       } catch (error) {
         console.error('Error fetching revenue stats:', error);
@@ -365,6 +365,42 @@ export const adminApi = {
         return response.data;
       } catch (error) {
         console.error('Error exporting report:', error);
+        throw error;
+      }
+    }
+  },
+  
+  // API для предпочтений пользователя
+  preferences: {
+    // Получение настроек дашборда
+    getDashboardPreferences: async () => {
+      try {
+        const response = await api.get('/admin/preferences/dashboard');
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching dashboard preferences:', error);
+        throw error;
+      }
+    },
+    
+    // Сохранение настроек дашборда
+    saveDashboardPreferences: async (preferences: any) => {
+      try {
+        const response = await api.post('/admin/preferences/dashboard', preferences);
+        return response.data;
+      } catch (error) {
+        console.error('Error saving dashboard preferences:', error);
+        throw error;
+      }
+    },
+    
+    // Получение списка оповещений
+    getAlertRules: async () => {
+      try {
+        const response = await api.get('/admin/preferences/alerts');
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching alert rules:', error);
         throw error;
       }
     }
